@@ -22,6 +22,15 @@ on:
       - 'pnpm-workspace.yaml'
       - '.github/workflows/docker-happy-server.yml'
   workflow_dispatch:
+    inputs:
+      push_image:
+        description: 'Push image to registry'
+        type: boolean
+        default: true
+      image_tag:
+        description: 'Additional image tag (optional)'
+        type: string
+        required: false
 
 env:
   REGISTRY: ghcr.io
@@ -59,13 +68,14 @@ jobs:
             type=ref,event=pr
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.image_tag }},enable=${{ inputs.image_tag != '' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile.server
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'pull_request' && 'false' || github.event_name == 'workflow_dispatch' && inputs.push_image || 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
